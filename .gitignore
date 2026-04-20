@@ -1,0 +1,8 @@
+node_modules/
+frontend-crowd/node_modules/
+backend-crowd/node_modules/
+
+__pycache__/
+*.pyc
+
+.env
