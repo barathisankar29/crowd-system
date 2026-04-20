@@ -1,0 +1,5 @@
+{
+  "dependencies": {
+    "write-excel-file": "^3.0.8"
+  }
+}
