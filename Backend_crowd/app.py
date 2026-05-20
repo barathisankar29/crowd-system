@@ -31,7 +31,7 @@ BASE_ZONE_CAPACITY = {k: 5 for k in ["A", "B", "C", "D", "E", "F", "G", "H", "I"
 SOURCE_CONFIG = {
     "video": {
         "label": "Video File",
-        "name": "crowd.mp4",
+        "name": "cctv.mp4",
         "type": "file",
         "value": "cctv.mp4",
         "zone_scale": 1.0
