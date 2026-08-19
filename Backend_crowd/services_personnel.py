@@ -11,6 +11,10 @@ ALLOWED_STATUS = {"on-duty", "responding", "break", "off-duty", "inactive"}
 PHONE_RE = re.compile(r"^[\d+()\-\s]{7,20}$")
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
 
+# Personnel are recorded against display-style zone names ("Zone A"), matching
+# how zones are shown everywhere else in the product (Dashboard, /api/zones).
+KNOWN_ZONES = {f"Zone {name}" for name in ZONE_NAMES}
+
 # Flexible header aliases so real-world spreadsheets don't have to match exactly.
 COLUMN_ALIASES = {
     "personnel_id": {"personnel id", "id", "badge", "badge id"},
@@ -42,24 +46,32 @@ def get_personnel(personnel_id: str):
         return row.to_dict() if row else None
 
 
-def _validate_payload(payload: dict, *, require_id=True):
+def _validate_payload(payload: dict, *, partial=False):
+    """partial=True validates only the fields actually present (PATCH);
+    partial=False requires id/name and defaults status (POST/import)."""
     errors = []
-    if require_id and not str(payload.get("id") or payload.get("personnel_id") or "").strip():
+
+    if not partial and not str(payload.get("id") or payload.get("personnel_id") or "").strip():
         errors.append("Personnel ID is required")
-    if not str(payload.get("name") or "").strip():
-        errors.append("Name is required")
 
-    phone = str(payload.get("phone") or "").strip()
-    if phone and not PHONE_RE.match(phone):
-        errors.append("Invalid phone")
+    if not partial or "name" in payload:
+        if not str(payload.get("name") or "").strip():
+            errors.append("Name is required")
 
-    email = str(payload.get("email") or "").strip()
-    if email and not EMAIL_RE.match(email):
-        errors.append("Invalid email")
+    if not partial or "phone" in payload:
+        phone = str(payload.get("phone") or "").strip()
+        if phone and not PHONE_RE.match(phone):
+            errors.append("Invalid phone")
 
-    status = str(payload.get("status") or "on-duty").strip().lower()
-    if status not in ALLOWED_STATUS:
-        errors.append("Invalid status")
+    if not partial or "email" in payload:
+        email = str(payload.get("email") or "").strip()
+        if email and not EMAIL_RE.match(email):
+            errors.append("Invalid email")
+
+    if not partial or "status" in payload:
+        status = str(payload.get("status") or "on-duty").strip().lower()
+        if status not in ALLOWED_STATUS:
+            errors.append("Invalid status")
 
     return errors
 
@@ -91,7 +103,7 @@ def create_personnel(payload: dict):
 
 
 def update_personnel(personnel_id: str, payload: dict):
-    errors = _validate_payload({**payload, "id": personnel_id}, require_id=False)
+    errors = _validate_payload(payload, partial=True)
     if errors:
         raise ValueError("; ".join(errors))
 
@@ -195,7 +207,7 @@ def preview_import(file_stream):
                 errors.append("Duplicate Personnel ID in file")
             seen_ids_in_file.add(key)
 
-        if data["zone"] and data["zone"].upper() not in ZONE_NAMES:
+        if data["zone"] and data["zone"].lower() not in {z.lower() for z in KNOWN_ZONES}:
             warnings.append(f"Unknown zone '{data['zone']}' — will be saved as-is")
 
         action = "update" if data["id"].lower() in existing_ids else "create"
