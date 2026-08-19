@@ -513,6 +513,221 @@ def heatmap():
     )
 
 
+@app.route("/security/alerts")
+def security_alerts():
+
+    with data_lock:
+        backend_alerts = global_data["alerts"]
+
+    zone_assignment = {
+        "Zone A": "SC-001",
+        "Zone B": "SC-002",
+        "Zone C": "SC-003",
+        "Zone D": "SC-004",
+        "Zone E": "SC-005",
+        "Zone F": "SC-006",
+        "Zone G": "SC-007",
+        "Zone H": "SC-008",
+        "Zone I": "SC-001",
+    }
+
+    security_alerts = []
+
+    for alert in backend_alerts:
+
+        title = alert.get("title", "")
+
+        zone = "Unknown"
+
+        if title.startswith("Zone"):
+            parts = title.split()
+            if len(parts) >= 2:
+                zone = f"{parts[0]} {parts[1]}"
+
+        severity = alert["severity"].lower()
+
+        if severity == "high":
+            alert_type = "Crowd Surge"
+        elif severity == "moderate":
+            alert_type = "Crowd Build-up"
+        else:
+            alert_type = "System Update"
+
+        security_alerts.append({
+
+            "id": alert["id"],
+
+            "zone": zone,
+
+            "severity": severity,
+
+            "type": alert_type,
+
+            "density": "--",
+
+            "assigned": zone_assignment.get(zone, "SC-001"),
+
+            "time": alert["timestamp"],
+
+            "desc": title
+
+        })
+
+    return jsonify(security_alerts)
+
+
+@app.route("/security/zones")
+def security_zones():
+
+    with data_lock:
+        zone_counts = global_data["zones"]
+
+    capacities = get_zone_capacity_map()
+
+    officer_map = {
+        "Zone A": 2,
+        "Zone B": 2,
+        "Zone C": 1,
+        "Zone D": 1,
+        "Zone E": 1,
+        "Zone F": 1,
+        "Zone G": 1,
+        "Zone H": 1,
+        "Zone I": 1,
+    }
+
+    zones = []
+
+    for zone_name in ["A","B","C","D","E","F","G","H","I"]:
+
+        current = int(zone_counts.get(zone_name, 0))
+        capacity = int(capacities.get(zone_name, 5))
+
+        density = int((current / capacity) * 100) if capacity > 0 else 0
+
+        if density >= 80:
+            status = "critical"
+        elif density >= 50:
+            status = "medium"
+        else:
+            status = "low"
+
+        zones.append({
+            "zone": f"Zone {zone_name}",
+            "capacity": capacity,
+            "current": current,
+            "density": density,
+            "status": status,
+            "officers": officer_map.get(f"Zone {zone_name}", 1)
+        })
+
+    return jsonify(zones)
+
+
+@app.route("/security/dispatch")
+def security_dispatch():
+
+    with data_lock:
+        alerts = global_data["alerts"]
+
+    dispatch_log = []
+
+    for alert in alerts:
+
+        severity = alert["severity"].upper()
+
+        if severity == "HIGH":
+            target = "ALL"
+            msg = f"{alert['title']} - Immediate response required."
+            msg_type = "broadcast"
+
+        elif severity == "MODERATE":
+            target = "Nearest Unit"
+            msg = f"{alert['title']} - Monitor the situation."
+            msg_type = "order"
+
+        else:
+            target = "Control"
+            msg = alert["title"]
+            msg_type = "field"
+
+        dispatch_log.append({
+            "time": alert["timestamp"],
+            "from": "Control",
+            "to": target,
+            "msg": msg,
+            "type": msg_type
+        })
+
+    return jsonify(dispatch_log)
+
+@app.route("/incidents")
+def incidents_api():
+
+    with data_lock:
+        alerts = global_data["alerts"]
+
+    incidents = []
+
+    for i, alert in enumerate(alerts):
+
+        severity = alert["severity"].lower()
+
+        if severity == "high":
+            severity = "critical"
+        elif severity == "moderate":
+            severity = "medium"
+
+        incidents.append({
+
+            "id": f"INC-2026-{1000+i}",
+
+            "date": "2026-08-06",
+
+            "time": alert["timestamp"],
+
+            # Extract zone from title
+            "zone": alert["title"].split()[1]
+                    if alert["title"].startswith("Zone")
+                    else "Unknown",
+
+            "type": alert["title"],
+
+            "severity": severity,
+
+            "status": "active",
+
+            "reportedBy": "AI System",
+
+            "assignedTo": "Control Room",
+
+            "density": "--",
+
+            "casualties": 0,
+
+            "evacuated": 0,
+
+            "description": alert["title"],
+
+            "timeline": [
+                {
+                    "time": alert["timestamp"],
+                    "actor": "AI System",
+                    "action": alert["title"],
+                    "type": "auto"
+                }
+            ],
+
+            "tags": [
+                severity
+            ]
+
+        })
+
+    return jsonify(incidents)
+
+
+
 @app.route("/acknowledge_alert", methods=["POST"])
 def acknowledge_alert():
     payload = request.get_json(silent=True) or {}
@@ -525,6 +740,60 @@ def acknowledge_alert():
         "message": f"Alert {alert_id} acknowledged"
     })
 
+security_team = [
+    {
+        "id": 1,
+        "name": "John Carter",
+        "badge": "ST-101",
+        "role": "Supervisor",
+        "zone": "Zone A",
+        "status": "on-duty",
+        "radio": "CH-01",
+        "avatar": "",
+        "alerts": 2,
+        "lastSeen": "Just now"
+    },
+    {
+        "id": 2,
+        "name": "Sarah Wilson",
+        "badge": "ST-102",
+        "role": "Patrol Officer",
+        "zone": "Zone C",
+        "status": "responding",
+        "radio": "CH-03",
+        "avatar": "",
+        "alerts": 1,
+        "lastSeen": "30 sec ago"
+    },
+    {
+        "id": 3,
+        "name": "Michael Lee",
+        "badge": "ST-103",
+        "role": "Control Room",
+        "zone": "HQ",
+        "status": "responding",
+        "radio": "CH-05",
+        "avatar": "",
+        "alerts": 0,
+        "lastSeen": "1 min ago"
+    },
+    {
+        "id": 4,
+        "name": "Emily Davis",
+        "badge": "ST-104",
+        "role": "Patrol Officer",
+        "zone": "Zone F",
+        "status": "break",
+        "radio": "CH-04",
+        "avatar": "",
+        "alerts": 0,
+        "lastSeen": "5 min ago"
+    }
+]
+
+@app.route("/security/team")
+def security_team_api():
+    return jsonify(security_team)
 
 if __name__ == "__main__":
     init_video("video")
