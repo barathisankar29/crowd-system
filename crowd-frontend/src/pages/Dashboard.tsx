@@ -38,6 +38,7 @@ import {
   ClipboardList,
   Lock,
   Radio,
+  TrendingUp,
 } from "lucide-react";
 import {
   LineChart,
@@ -48,42 +49,18 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
+import {
+  getAlerts,
+  getMetrics,
+  heatmapUrl as buildHeatmapUrl,
+  startMonitoring,
+  stopMonitoring,
+  videoFeedUrl,
+} from "../api/vision";
+import { ApiError } from "../api/client";
+import type { AlertItem, AlertSeverity, ChartPoint, PredictionInfo, ZoneMetric } from "../types/vision";
 
-type ZoneStatus = "SAFE" | "MODERATE" | "HIGH";
-type AlertSeverity = ZoneStatus | "INFO";
 type TabId = "overview" | "camera" | "analytics" | "alerts" | "settings";
-
-interface ZoneMetric {
-  id: string;
-  name: string;
-  count: number | null;
-  capacity: number | null;
-  status: ZoneStatus | null;
-  message: string | null;
-}
-
-interface AlertItem {
-  id: string;
-  title: string;
-  severity: AlertSeverity | null;
-  timestamp: string | null;
-}
-
-interface MetricsResponse {
-  totalCount?: number;
-  density?: number;
-  overallStatus?: string;
-  zones: ZoneMetric[];
-  locationName?: string;
-}
-
-interface ChartPoint {
-  time: string;
-  count: number;
-  density: number;
-}
-
-const API_BASE = "http://localhost:5000";
 
 const EMPTY_ZONES: ZoneMetric[] = [
   { id: "zone-a", name: "Zone A", count: null, capacity: null, status: null, message: null },
@@ -324,7 +301,7 @@ function AnalyticsChart({ data, running }: { data: ChartPoint[]; running: boolea
         <h2 className="panel-heading">Crowd Analytics</h2>
         <div className="chart-meta">
           <span className="chart-chip cyan">People Count</span>
-          <span className="chart-chip green">Density</span>
+          <span className="chart-chip green">Density Index</span>
         </div>
       </div>
 
@@ -545,8 +522,9 @@ function AnalyticsView(props: {
   totalCount: number;
   density: number;
   overallStatus: string;
+  prediction: PredictionInfo | null;
 }) {
-  const { running, backendConnected, chartData, totalCount, density, overallStatus } = props;
+  const { running, backendConnected, chartData, totalCount, density, overallStatus, prediction } = props;
 
   return (
     <div className="stack-layout">
@@ -563,7 +541,7 @@ function AnalyticsView(props: {
           <div className="stat-icon green">
             <Waves size={18} />
           </div>
-          <div className="stat-card-label">Density</div>
+          <div className="stat-card-label">Crowd Density Index</div>
           <div className="stat-card-value">{density.toFixed(2)}</div>
         </article>
 
@@ -574,7 +552,22 @@ function AnalyticsView(props: {
           <div className="stat-card-label">System Status</div>
           <div className="stat-card-value small">{overallStatus}</div>
         </article>
+
+        <article className="panel stat-card">
+          <div className="stat-icon" style={{ background: "rgba(99,168,255,0.14)", color: "#63a8ff" }}>
+            <TrendingUp size={18} />
+          </div>
+          <div className="stat-card-label">Predicted Crowd ({prediction?.horizonSeconds ?? 30}s)</div>
+          <div className="stat-card-value">{prediction ? prediction.predictedCount : "—"}</div>
+        </article>
       </section>
+
+      {prediction && (
+        <p style={{ fontSize: 11, color: "var(--muted-2)", margin: "-8px 0 4px" }}>
+          Prediction is a simple trend extrapolation from the last ~16s of readings ({prediction.method}), not a
+          calibrated forecasting model — treat it as an early indicator, not a guarantee.
+        </p>
+      )}
 
       <AnalyticsChart data={chartData} running={running && backendConnected} />
     </div>
@@ -639,7 +632,7 @@ function SettingsView(props: {
           <strong>{totalCount}</strong>
         </div>
         <div className="settings-row">
-          <span>Density</span>
+          <span>Crowd Density Index</span>
           <strong>{density.toFixed(2)}</strong>
         </div>
         <div className="settings-row">
@@ -669,6 +662,8 @@ export default function Dashboard(){
   const [locationLabel, setLocationLabel] = useState("Locating...");
   const [operatorLabel] = useState("Security Command");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [prediction, setPrediction] = useState<PredictionInfo | null>(null);
+  const [monitoringPending, setMonitoringPending] = useState(false);
   const videoInitializedRef = useRef(false);
 
   useEffect(() => {
@@ -706,6 +701,7 @@ export default function Dashboard(){
       setOverallStatus("SAFE");
       setChartData([]);
       setSelectedZoneId(null);
+      setPrediction(null);
       videoInitializedRef.current = false;
       return;
     }
@@ -714,18 +710,7 @@ export default function Dashboard(){
 
     const fetchAll = async () => {
       try {
-        const stamp = Date.now();
-        const [metricsRes, alertsRes] = await Promise.all([
-          fetch(`${API_BASE}/metrics?ts=${stamp}`, { cache: "no-store" }),
-          fetch(`${API_BASE}/alerts?ts=${stamp}`, { cache: "no-store" }),
-        ]);
-
-        if (!metricsRes.ok || !alertsRes.ok) {
-          throw new Error("Backend request failed");
-        }
-
-        const metricsData: MetricsResponse = await metricsRes.json();
-        const alertsData: AlertItem[] = await alertsRes.json();
+        const [metricsData, alertsData] = await Promise.all([getMetrics(), getAlerts()]);
 
         if (!mounted) return;
 
@@ -748,17 +733,14 @@ export default function Dashboard(){
         setTotalCount(nextCount);
         setDensity(nextDensity);
         setOverallStatus(metricsData.overallStatus ?? "SAFE");
-
-        if (metricsData.locationName?.trim()) {
-          setLocationLabel(metricsData.locationName);
-        }
+        setPrediction(metricsData.prediction ?? null);
 
         if (!videoInitializedRef.current) {
-          setVideoUrl(`${API_BASE}/video_feed`);
+          setVideoUrl(videoFeedUrl());
           videoInitializedRef.current = true;
         }
 
-        setHeatmapUrl(`${API_BASE}/heatmap?ts=${stamp}`);
+        setHeatmapUrl(buildHeatmapUrl());
 
         setSelectedZoneId((prev) => {
           if (!prev) return nextZones[0]?.id ?? null;
@@ -791,6 +773,23 @@ export default function Dashboard(){
   );
 
   const monitoringLabel = running ? "Stop Monitoring" : "Start Monitoring";
+
+  const handleToggleMonitoring = async () => {
+    setMonitoringPending(true);
+    try {
+      if (running) {
+        await stopMonitoring();
+        setRunning(false);
+      } else {
+        await startMonitoring();
+        setRunning(true);
+      }
+    } catch (error) {
+      console.error("Could not toggle monitoring:", error instanceof ApiError ? error.message : error);
+    } finally {
+      setMonitoringPending(false);
+    }
+  };
   const notificationCount = alerts.filter(
     (alert) => alert.severity === "HIGH" || alert.severity === "MODERATE"
   ).length;
@@ -907,6 +906,7 @@ export default function Dashboard(){
           totalCount={totalCount}
           density={density}
           overallStatus={overallStatus}
+          prediction={prediction}
         />
       );
     }
@@ -1109,10 +1109,11 @@ export default function Dashboard(){
               <button
                 type="button"
                 className={`action-button primary ${running ? "danger" : ""}`}
-                onClick={() => setRunning((prev) => !prev)}
+                onClick={handleToggleMonitoring}
+                disabled={monitoringPending}
               >
                 {running ? <Square size={17} strokeWidth={2} /> : <Play size={17} strokeWidth={2} />}
-                <span>{monitoringLabel}</span>
+                <span>{monitoringPending ? "Please wait…" : monitoringLabel}</span>
               </button>
 
               <button type="button" className="action-button secondary" onClick={exportCSV}>
