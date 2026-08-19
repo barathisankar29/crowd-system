@@ -5,7 +5,6 @@
     </div>
   );
 }*/
-import "../App.css";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import writeXlsxFile from "write-excel-file/browser";
