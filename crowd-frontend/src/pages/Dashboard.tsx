@@ -7,6 +7,7 @@
 }*/
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useNavigate } from "react-router-dom";
+import { useSession } from "../state/SessionContext";
 import writeXlsxFile from "write-excel-file/browser";
 import {
   Bell,
@@ -652,6 +653,7 @@ function SettingsView(props: {
 
 export default function Dashboard(){
   const navigate = useNavigate();
+  const { currentUser, hasPermission, signOut } = useSession();
   const [running, setRunning] = useState(false);
   const [zones, setZones] = useState<ZoneMetric[]>(EMPTY_ZONES);
   const [alerts, setAlerts] = useState<AlertItem[]>([]);
@@ -991,8 +993,10 @@ export default function Dashboard(){
                 <Shield size={13} strokeWidth={2.2} />
               </div>
               <div className="avatar-meta">
-                <span className="avatar-name">Security Command</span>
-                <span className="avatar-role">Authority Access</span>
+                <span className="avatar-name">{currentUser?.name ?? "Security Command"}</span>
+                <span className="avatar-role" style={{ textTransform: "capitalize" }}>
+                  {currentUser?.roleKey.replace("_", " ") ?? "Authority Access"}
+                </span>
               </div>
               <ChevronDown size={15} className={`profile-caret ${profileOpen ? "open" : ""}`} />
             </button>
@@ -1037,14 +1041,24 @@ export default function Dashboard(){
                 <button
                   type="button"
                   className="profile-menu-item"
+                  title={!hasPermission("manage_authorities") ? "Your role can view this read-only" : undefined}
                   onClick={() => navigate("/authority-permissions")}
                 >
                   <Lock size={16} />
                   <span>Authority Permissions</span>
+                  {!hasPermission("manage_authorities") && (
+                    <span style={{ marginLeft: "auto", fontSize: 10, color: "var(--muted-2)" }}>view only</span>
+                  )}
                 </button>
 
-                
-                <button type="button" className="profile-menu-item danger">
+                <button
+                  type="button"
+                  className="profile-menu-item danger"
+                  onClick={() => {
+                    signOut();
+                    navigate("/sign-in", { replace: true });
+                  }}
+                >
                   <Shield size={16} />
                   <span>Secure Sign Out</span>
                 </button>
