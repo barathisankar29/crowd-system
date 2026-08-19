@@ -668,6 +668,7 @@ export default function Dashboard(){
 
   useEffect(() => {
     if (!navigator.geolocation) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- reporting an unsupported browser API, not deriving state from props/state
       setLocationLabel("Location unavailable");
       return;
     }
@@ -691,6 +692,8 @@ export default function Dashboard(){
 
   useEffect(() => {
     if (!running) {
+      // Resets every readout to its idle default when monitoring is stopped.
+      // eslint-disable-next-line react-hooks/set-state-in-effect
       setZones(EMPTY_ZONES);
       setAlerts([]);
       setVideoUrl(null);
@@ -880,7 +883,7 @@ export default function Dashboard(){
       ...chartData.map((p) => [{ value: p.time }, { value: p.count }, { value: p.density }]),
     ];
 
-    await writeXlsxFile(rows as any, {
+    await writeXlsxFile(rows, {
       fileName: "crowd-intelligence-data.xlsx",
     });
   };

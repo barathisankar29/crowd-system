@@ -2048,6 +2048,30 @@ img {
   padding: 28px 32px 60px;
 }
 
+/* Two-column list/detail and history/compose layouts (Incident Log,
+   Dispatch Control) — inline gridTemplateColumns can't carry a media
+   query, so these live here instead. */
+.split-layout-list-detail {
+  display: grid;
+  grid-template-columns: 380px 1fr;
+  gap: 20px;
+  align-items: start;
+}
+
+.split-layout-content-side {
+  display: grid;
+  grid-template-columns: 1fr 380px;
+  gap: 20px;
+  align-items: start;
+}
+
+@media (max-width: 900px) {
+  .split-layout-list-detail,
+  .split-layout-content-side {
+    grid-template-columns: 1fr;
+  }
+}
+
 @media (max-width: 720px) {
   .ui-page {
     padding: 20px 16px 48px;
@@ -2056,5 +2080,18 @@ img {
   .data-table th,
   .data-table td {
     padding: 10px 12px;
+  }
+
+  .page-header {
+    flex-direction: column;
+  }
+
+  .page-header-actions {
+    width: 100%;
+  }
+
+  .page-header-actions .btn {
+    flex: 1;
+    justify-content: center;
   }
 }

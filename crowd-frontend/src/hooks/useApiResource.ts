@@ -34,7 +34,9 @@ export function useApiResource<T>(fetcher: () => Promise<T>, deps: unknown[], op
       setError(err instanceof ApiError ? err.message : "Something went wrong loading this data.");
       setStatus("error");
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    // A generic resource hook takes its dependency array from the caller by
+    // design, so it can't be a static array literal here.
+    // eslint-disable-next-line react-hooks/exhaustive-deps, react-hooks/use-memo
   }, deps);
 
   useEffect(() => {

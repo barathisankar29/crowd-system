@@ -39,7 +39,7 @@ export default function SecurityTeam() {
   const zonesResource = useApiResource(() => listZoneCoverage(), [], { pollMs: 5000, isEmpty: () => false });
   const dispatchResource = useApiResource(() => listDispatch(), [], { pollMs: 5000 });
 
-  const personnel = personnelResource.data ?? [];
+  const personnel = useMemo(() => personnelResource.data ?? [], [personnelResource.data]);
   const filtered = useMemo(
     () => (filterStatus === "all" ? personnel : personnel.filter((p) => p.status === filterStatus)),
     [personnel, filterStatus]

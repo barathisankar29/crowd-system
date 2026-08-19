@@ -36,6 +36,8 @@ export function PersonnelFormModal({
 
   useEffect(() => {
     if (!open) return;
+    // Resets the form to a clean slate each time the modal opens.
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     setError(null);
     setDraft(
       editing

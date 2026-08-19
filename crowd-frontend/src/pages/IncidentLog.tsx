@@ -59,6 +59,7 @@ export default function IncidentLog() {
 
   useEffect(() => {
     if (!selectedId) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clearing detail when selection is cleared, not deriving it
       setDetail(null);
       return;
     }
@@ -73,7 +74,9 @@ export default function IncidentLog() {
     };
   }, [selectedId, listResource.data]);
 
+  // Keeps selection valid as the polled list changes underneath it.
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
     if (!selectedId && incidents.length > 0) setSelectedId(incidents[0].id);
     if (selectedId && !incidents.some((i) => i.id === selectedId)) setSelectedId(incidents[0]?.id ?? null);
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -157,7 +160,7 @@ export default function IncidentLog() {
       )}
 
       {listResource.status === "ready" && (
-        <div style={{ display: "grid", gridTemplateColumns: "380px 1fr", gap: 20, alignItems: "start" }}>
+        <div className="split-layout-list-detail">
           <div className="ui-card ui-card-tight">
             <div style={{ position: "relative", marginBottom: 10 }}>
               <Search size={13} style={{ position: "absolute", left: 10, top: "50%", transform: "translateY(-50%)", color: "var(--muted-2)" }} />

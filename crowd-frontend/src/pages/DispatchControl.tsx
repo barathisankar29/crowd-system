@@ -82,7 +82,7 @@ export default function DispatchControl() {
         </div>
       )}
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 380px", gap: 20, alignItems: "start" }}>
+      <div className="split-layout-content-side">
         <div className="ui-card">
           <div style={{ fontSize: 13, fontWeight: 600, color: "var(--text)", marginBottom: 16 }}>Dispatch History</div>
           {historyResource.status === "loading" && <LoadingState label="Loading dispatch history…" />}
