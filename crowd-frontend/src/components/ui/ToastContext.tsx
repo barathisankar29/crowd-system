@@ -1,7 +1,7 @@
 import { createContext, useCallback, useContext, useRef, useState, type ReactNode } from "react";
-import { CheckCircle2, XCircle, Info } from "lucide-react";
+import { CheckCircle2, XCircle, TriangleAlert, Info } from "lucide-react";
 
-type ToastTone = "success" | "error" | "info";
+type ToastTone = "success" | "error" | "warning" | "info";
 
 interface ToastEntry {
   id: number;
@@ -18,6 +18,7 @@ const ToastContext = createContext<ToastContextValue | null>(null);
 const ICONS: Record<ToastTone, ReactNode> = {
   success: <CheckCircle2 size={16} />,
   error: <XCircle size={16} />,
+  warning: <TriangleAlert size={16} />,
   info: <Info size={16} />,
 };
 

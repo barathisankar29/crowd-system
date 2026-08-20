@@ -57,6 +57,10 @@ body,
 
 body {
   font-family: "Inter", sans-serif;
+  /* One weight scale, used consistently everywhere: 500 body text, 600-700
+     for emphasis/labels, 800 reserved for page-level headings. Never 400 —
+     against this dark background, regular weight reads as too thin. */
+  font-weight: 500;
   background:
     radial-gradient(circle at top left, rgba(40, 215, 255, 0.08), transparent 24%),
     radial-gradient(circle at top right, rgba(26, 227, 154, 0.07), transparent 18%),
@@ -79,6 +83,17 @@ button {
 img {
   display: block;
   max-width: 100%;
+}
+
+/* Monospace reserved for technically-meaningful values only — IDs,
+   timestamps, coordinates — never for prose or labels. */
+.mono {
+  font-family: var(--font-mono);
+}
+
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: var(--safe);
 }
 
 .app-shell {
@@ -682,6 +697,25 @@ img {
 .camera-dot.live {
   background: #ff5a67;
   box-shadow: 0 0 10px rgba(255, 90, 103, 0.5);
+}
+
+.camera-tag-source {
+  color: #dce8f5;
+}
+
+.camera-tag-sep {
+  width: 1px;
+  height: 12px;
+  background: rgba(255, 255, 255, 0.14);
+}
+
+.camera-tag-status {
+  color: var(--muted);
+  font-weight: 700;
+}
+
+.camera-tag-status.live {
+  color: var(--high);
 }
 
 .video-placeholder {
@@ -1528,6 +1562,12 @@ img {
   cursor: not-allowed;
 }
 
+.btn:focus-visible,
+.ui-select-trigger:focus-visible {
+  outline: 2px solid rgba(40, 215, 255, 0.9);
+  outline-offset: 2px;
+}
+
 .btn-primary {
   background: linear-gradient(135deg, var(--accent), var(--accent-2));
   color: #06131a;
@@ -1936,6 +1976,108 @@ img {
   color: var(--high);
 }
 
+.ui-select {
+  position: relative;
+  width: 100%;
+}
+
+.ui-select-trigger {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: 9px 12px;
+  color: var(--text);
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.ui-select-trigger:hover:not(:disabled) {
+  border-color: var(--border-strong);
+}
+
+.ui-select-trigger[aria-expanded="true"] {
+  border-color: rgba(26, 227, 154, 0.5);
+}
+
+.ui-select-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.ui-select-placeholder {
+  color: var(--muted-2);
+}
+
+.ui-select-chevron {
+  flex-shrink: 0;
+  color: var(--muted);
+  transition: transform 0.15s ease;
+}
+
+.ui-select-trigger[aria-expanded="true"] .ui-select-chevron {
+  transform: rotate(180deg);
+}
+
+.ui-select-menu {
+  position: absolute;
+  z-index: 150;
+  top: calc(100% + 4px);
+  left: 0;
+  right: 0;
+  max-height: 220px;
+  overflow-y: auto;
+  background: var(--panel-2);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow);
+  padding: 4px;
+  margin: 0;
+  list-style: none;
+}
+
+.ui-select-menu::-webkit-scrollbar {
+  width: 6px;
+}
+
+.ui-select-menu::-webkit-scrollbar-thumb {
+  background: var(--border-strong);
+  border-radius: 3px;
+}
+
+.ui-select-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  font-size: 13px;
+  color: var(--text);
+  cursor: pointer;
+}
+
+.ui-select-option:hover,
+.ui-select-option:focus-visible {
+  background: var(--chip-bg-hover);
+}
+
+.ui-select-option.selected {
+  color: var(--safe);
+}
+
+.ui-select-option.disabled {
+  color: var(--muted-2);
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .form-row {
   display: grid;
   grid-template-columns: 1fr 1fr;
@@ -2024,6 +2166,24 @@ img {
   font-size: 13px;
   color: var(--text);
   min-width: 240px;
+  animation: toast-in 0.18s ease-out;
+}
+
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(6px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .toast {
+    animation: none;
+  }
 }
 
 .toast.tone-success {
@@ -2034,12 +2194,356 @@ img {
   border-color: rgba(255, 90, 103, 0.4);
 }
 
+.toast.tone-warning {
+  border-color: rgba(243, 207, 56, 0.4);
+}
+
+.toast.tone-info {
+  border-color: rgba(99, 168, 255, 0.4);
+}
+
 .toast-icon.tone-success {
   color: var(--safe);
 }
 
 .toast-icon.tone-error {
   color: var(--high);
+}
+
+.toast-icon.tone-warning {
+  color: var(--moderate);
+}
+
+.toast-icon.tone-info {
+  color: var(--blue);
+}
+
+/* ==========================================================================
+   Sign-in — the one full-screen page in the app. Deliberately built as a
+   crafted vector composition (a sparse dot grid, evoking the aggregated
+   density maps this product actually produces) rather than a stock photo —
+   no external asset, no network request, loads instantly.
+   ========================================================================== */
+
+.signin-shell {
+  position: relative;
+  min-height: 100vh;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  background: linear-gradient(180deg, #071019 0%, #060a10 100%);
+  padding: var(--space-5);
+}
+
+.signin-backdrop {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+.signin-backdrop svg {
+  position: absolute;
+  inset: 0;
+}
+
+.signin-scanlines {
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    180deg,
+    rgba(255, 255, 255, 0.012) 0px,
+    rgba(255, 255, 255, 0.012) 1px,
+    transparent 1px,
+    transparent 3px
+  );
+}
+
+.signin-vignette {
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(ellipse at center, transparent 35%, rgba(4, 7, 11, 0.55) 100%);
+}
+
+.signin-content {
+  position: relative;
+  z-index: 1;
+  width: 100%;
+  max-width: 980px;
+  display: grid;
+  grid-template-columns: 1.05fr 0.95fr;
+  gap: var(--space-6);
+  align-items: center;
+}
+
+.signin-brand-panel {
+  padding: var(--space-4);
+}
+
+.signin-brand-mark {
+  width: 56px;
+  height: 56px;
+  border-radius: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #06131a;
+  background:
+    radial-gradient(circle at 30% 30%, rgba(40, 215, 255, 0.95), rgba(40, 215, 255, 0.18) 38%, transparent 39%),
+    radial-gradient(circle at 68% 68%, rgba(26, 227, 154, 0.95), rgba(26, 227, 154, 0.18) 38%, transparent 39%),
+    linear-gradient(145deg, rgba(255, 255, 255, 0.14), rgba(255, 255, 255, 0.03));
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.1), 0 14px 34px rgba(0, 0, 0, 0.3);
+  margin-bottom: var(--space-4);
+}
+
+.signin-brand-title {
+  margin: 0 0 var(--space-3);
+  font-size: 32px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  color: var(--text);
+}
+
+.signin-brand-desc {
+  margin: 0 0 var(--space-5);
+  font-size: 14px;
+  line-height: 1.65;
+  color: var(--muted);
+  max-width: 440px;
+}
+
+.signin-features {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  max-width: 420px;
+}
+
+.signin-features li {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-size: 13px;
+  color: var(--muted);
+  line-height: 1.4;
+}
+
+.signin-feature-icon {
+  flex: 0 0 auto;
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--chip-bg);
+  border: 1px solid var(--border);
+  color: var(--cyan);
+}
+
+.signin-card {
+  background: linear-gradient(180deg, rgba(255, 255, 255, 0.03), rgba(255, 255, 255, 0.015)), var(--panel);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow);
+  padding: var(--space-6) var(--space-5);
+  backdrop-filter: blur(6px);
+}
+
+.signin-card-head {
+  margin-bottom: var(--space-5);
+}
+
+.signin-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  color: var(--text);
+  margin-bottom: 6px;
+}
+
+.signin-card-sub {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.6;
+  color: var(--muted-2);
+}
+
+.signin-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 11px;
+  color: var(--muted-2);
+  margin-top: 12px;
+}
+
+.signin-status-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--muted-2);
+  flex-shrink: 0;
+}
+
+.signin-status-dot.online {
+  background: var(--safe);
+  box-shadow: 0 0 6px rgba(26, 227, 154, 0.55);
+}
+
+.signin-status-dot.offline {
+  background: var(--high);
+}
+
+.signin-role-skeleton {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signin-skeleton-row {
+  height: 42px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: linear-gradient(
+    90deg,
+    rgba(255, 255, 255, 0.02) 25%,
+    rgba(255, 255, 255, 0.05) 37%,
+    rgba(255, 255, 255, 0.02) 63%
+  );
+  background-size: 400% 100%;
+  animation: signin-skeleton-shimmer 1.6s ease infinite;
+}
+
+@keyframes signin-skeleton-shimmer {
+  0% {
+    background-position: 100% 50%;
+  }
+  100% {
+    background-position: 0% 50%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .signin-skeleton-row {
+    animation: none;
+  }
+}
+
+.signin-backend-unavailable {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 14px 16px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.signin-backend-unavailable-title {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.signin-backend-unavailable p {
+  margin: 0;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.signin-role-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.signin-role-option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 11px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.02);
+  cursor: pointer;
+  font-size: 13px;
+  color: var(--text);
+  transition: border-color 0.15s, background 0.15s;
+}
+
+.signin-role-option:hover {
+  border-color: var(--border-strong);
+  background: var(--chip-bg-hover);
+}
+
+.signin-role-option.selected {
+  border-color: rgba(26, 227, 154, 0.45);
+  background: rgba(26, 227, 154, 0.07);
+  color: var(--safe);
+}
+
+.signin-role-option input[type="radio"] {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.signin-role-option span {
+  flex: 1;
+}
+
+.signin-role-option svg {
+  flex: 0 0 auto;
+  color: var(--safe);
+}
+
+.signin-submit {
+  width: 100%;
+  justify-content: center;
+  margin-top: var(--space-5);
+  height: 44px;
+}
+
+@media (max-width: 860px) {
+  .signin-content {
+    grid-template-columns: 1fr;
+    max-width: 460px;
+    gap: var(--space-5);
+  }
+
+  .signin-brand-panel {
+    padding: 0 var(--space-2);
+    text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .signin-brand-title {
+    font-size: 24px;
+  }
+
+  .signin-features {
+    display: none;
+  }
+}
+
+@media (max-width: 420px) {
+  .signin-card {
+    padding: var(--space-5) var(--space-4);
+  }
 }
 
 .ui-page {

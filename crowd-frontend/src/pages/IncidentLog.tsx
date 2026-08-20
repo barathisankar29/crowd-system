@@ -8,6 +8,7 @@ import { useSession } from "../state/SessionContext";
 import { useToast } from "../components/ui/ToastContext";
 import { PageHeader } from "../components/ui/PageHeader";
 import { Breadcrumbs } from "../components/ui/Breadcrumbs";
+import { Select } from "../components/ui/Select";
 import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingState, ErrorState } from "../components/ui/ResourceState";
 import { Badge } from "../components/ui/Badge";
@@ -173,28 +174,31 @@ export default function IncidentLog() {
               />
             </div>
             <div style={{ display: "flex", gap: 8, marginBottom: 12 }}>
-              <select className="form-select" value={filter.severity} onChange={(e) => setFilter((f) => ({ ...f, severity: e.target.value }))}>
-                {["all", "critical", "high", "medium", "low"].map((s) => (
-                  <option key={s} value={s}>{s === "all" ? "All Severities" : s}</option>
-                ))}
-              </select>
-              <select className="form-select" value={filter.status} onChange={(e) => setFilter((f) => ({ ...f, status: e.target.value }))}>
-                {["all", "active", "monitoring", "resolved"].map((s) => (
-                  <option key={s} value={s}>{s === "all" ? "All Statuses" : s}</option>
-                ))}
-              </select>
+              <Select
+                value={filter.severity}
+                onChange={(value) => setFilter((f) => ({ ...f, severity: value }))}
+                options={["all", "critical", "high", "medium", "low"].map((s) => ({
+                  value: s,
+                  label: s === "all" ? "All Severities" : s,
+                }))}
+              />
+              <Select
+                value={filter.status}
+                onChange={(value) => setFilter((f) => ({ ...f, status: value }))}
+                options={["all", "active", "monitoring", "resolved"].map((s) => ({
+                  value: s,
+                  label: s === "all" ? "All Statuses" : s,
+                }))}
+              />
             </div>
             {zones.length > 1 && (
-              <select
-                className="form-select"
-                style={{ marginBottom: 12 }}
-                value={filter.zone}
-                onChange={(e) => setFilter((f) => ({ ...f, zone: e.target.value }))}
-              >
-                {zones.map((z) => (
-                  <option key={z} value={z}>{z === "all" ? "All Zones" : `Zone ${z}`}</option>
-                ))}
-              </select>
+              <div style={{ marginBottom: 12 }}>
+                <Select
+                  value={filter.zone}
+                  onChange={(value) => setFilter((f) => ({ ...f, zone: value }))}
+                  options={zones.map((z) => ({ value: z, label: z === "all" ? "All Zones" : `Zone ${z}` }))}
+                />
+              </div>
             )}
             <div style={{ fontSize: 11, color: "var(--muted)", marginBottom: 10 }}>
               Showing <strong style={{ color: "var(--text)" }}>{filtered.length}</strong> of {incidents.length}
@@ -210,8 +214,12 @@ export default function IncidentLog() {
                     type="button"
                     onClick={() => setSelectedId(inc.id)}
                     style={{
-                      textAlign: "left", border: `1px solid ${isSelected ? sev.border : "var(--border)"}`,
-                      borderLeft: `3px solid ${sev.dot}`, borderRadius: 10, padding: "10px 12px",
+                      textAlign: "left",
+                      borderTop: `1px solid ${isSelected ? sev.border : "var(--border)"}`,
+                      borderRight: `1px solid ${isSelected ? sev.border : "var(--border)"}`,
+                      borderBottom: `1px solid ${isSelected ? sev.border : "var(--border)"}`,
+                      borderLeft: `3px solid ${sev.dot}`,
+                      borderRadius: 10, padding: "10px 12px",
                       background: isSelected ? "rgba(26,227,154,0.06)" : "var(--panel-2)", cursor: "pointer",
                     }}
                   >
@@ -284,16 +292,16 @@ export default function IncidentLog() {
                   {canManage && (
                     <div style={{ marginTop: 14 }}>
                       <label className="form-label">Assigned To</label>
-                      <select
-                        className="form-select"
+                      <Select
                         value={detail.assignedTo?.id ?? ""}
-                        onChange={(e) => handleAssign(e.target.value)}
-                      >
-                        <option value="">Unassigned</option>
-                        {personnel.filter((p) => p.status !== "inactive").map((p) => (
-                          <option key={p.id} value={p.id}>{p.name} — {p.id}</option>
-                        ))}
-                      </select>
+                        onChange={handleAssign}
+                        options={[
+                          { value: "", label: "Unassigned" },
+                          ...personnel
+                            .filter((p) => p.status !== "inactive")
+                            .map((p) => ({ value: p.id, label: `${p.name} — ${p.id}` })),
+                        ]}
+                      />
                     </div>
                   )}
                 </div>

@@ -53,3 +53,32 @@ export interface ZoneCoverage {
   status: "critical" | "medium" | "low";
   officers: number;
 }
+
+export interface MonitoringStatus {
+  running: boolean;
+  source: string | null;
+  sourceLabel: string | null;
+  sourceName: string | null;
+  cameraMode: string | null;
+  cameraConnected: boolean;
+  startedAt: string | null;
+  uptimeSeconds: number | null;
+  totalCount: number;
+  density: number;
+  overallStatus: string;
+  anomalyScore: number;
+  prediction: PredictionInfo | null;
+}
+
+export interface CameraSource {
+  id: string;
+  label: string;
+  name: string;
+  type: string;
+  zoneScale: number;
+}
+
+export interface CameraTestResult {
+  connected: boolean;
+  message: string;
+}

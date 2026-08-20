@@ -10,6 +10,7 @@ import { useSession } from "../state/SessionContext";
 import { useToast } from "../components/ui/ToastContext";
 import { ApiError } from "../api/client";
 import { PageHeader } from "../components/ui/PageHeader";
+import { Select } from "../components/ui/Select";
 import { EmptyState } from "../components/ui/EmptyState";
 import { LoadingState, ErrorState } from "../components/ui/ResourceState";
 import { Badge } from "../components/ui/Badge";
@@ -131,12 +132,14 @@ export default function DispatchControl() {
 
           <div className="form-field">
             <label className="form-label">Related Incident (optional)</label>
-            <select className="form-select" value={incidentId} onChange={(e) => setIncidentId(e.target.value)}>
-              <option value="">No specific incident</option>
-              {incidents.map((i) => (
-                <option key={i.id} value={i.id}>{i.id} — {i.alertType} (Zone {i.zone})</option>
-              ))}
-            </select>
+            <Select
+              value={incidentId}
+              onChange={setIncidentId}
+              options={[
+                { value: "", label: "No specific incident" },
+                ...incidents.map((i) => ({ value: i.id, label: `${i.id} — ${i.alertType} (Zone ${i.zone})` })),
+              ]}
+            />
           </div>
 
           {selectedIncident && (
@@ -150,22 +153,26 @@ export default function DispatchControl() {
 
           <div className="form-field">
             <label className="form-label">Target</label>
-            <select className="form-select" value={targetType} onChange={(e) => setTargetType(e.target.value as DispatchTargetType)}>
-              <option value="all">All Units (broadcast)</option>
-              <option value="officer">Specific Officer</option>
-              <option value="zone">Zone</option>
-            </select>
+            <Select
+              value={targetType}
+              onChange={(value) => setTargetType(value as DispatchTargetType)}
+              options={[
+                { value: "all", label: "All Units (broadcast)" },
+                { value: "officer", label: "Specific Officer" },
+                { value: "zone", label: "Zone" },
+              ]}
+            />
           </div>
 
           {targetType === "officer" && (
             <div className="form-field">
               <label className="form-label">Officer</label>
-              <select className="form-select" value={targetPersonnelId} onChange={(e) => setTargetPersonnelId(e.target.value)}>
-                <option value="">Select an officer…</option>
-                {personnel.map((p) => (
-                  <option key={p.id} value={p.id}>{p.id} — {p.name}</option>
-                ))}
-              </select>
+              <Select
+                value={targetPersonnelId}
+                onChange={setTargetPersonnelId}
+                placeholder="Select an officer…"
+                options={personnel.map((p) => ({ value: p.id, label: `${p.id} — ${p.name}` }))}
+              />
               {personnel.length === 0 && <div className="form-error">No on-duty personnel available to select.</div>}
             </div>
           )}
@@ -173,12 +180,12 @@ export default function DispatchControl() {
           {targetType === "zone" && (
             <div className="form-field">
               <label className="form-label">Zone</label>
-              <select className="form-select" value={targetZone} onChange={(e) => setTargetZone(e.target.value)}>
-                <option value="">Select a zone…</option>
-                {zones.map((z) => (
-                  <option key={z} value={z}>{z}</option>
-                ))}
-              </select>
+              <Select
+                value={targetZone}
+                onChange={setTargetZone}
+                placeholder="Select a zone…"
+                options={zones.map((z) => ({ value: z, label: z }))}
+              />
             </div>
           )}
 

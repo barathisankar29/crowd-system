@@ -2,6 +2,7 @@ import { useEffect, useState } from "react";
 import { createPersonnel, updatePersonnel } from "../../api/personnel";
 import { ApiError } from "../../api/client";
 import { Modal } from "../ui/Modal";
+import { Select } from "../ui/Select";
 import type { Personnel, PersonnelStatus } from "../../types/personnel";
 
 const ZONE_OPTIONS = ["Zone A", "Zone B", "Zone C", "Zone D", "Zone E", "Zone F", "Zone G", "Zone H", "Zone I"];
@@ -137,12 +138,13 @@ export function PersonnelFormModal({
         <div className="form-row">
           <div className="form-field">
             <label className="form-label" htmlFor="pf-zone">Assigned Zone</label>
-            <input id="pf-zone" className="form-input" list="zone-options" value={draft.zone} onChange={set("zone")} placeholder="Zone A" />
-            <datalist id="zone-options">
-              {ZONE_OPTIONS.map((z) => (
-                <option key={z} value={z} />
-              ))}
-            </datalist>
+            <Select
+              id="pf-zone"
+              value={draft.zone}
+              onChange={(value) => setDraft((prev) => ({ ...prev, zone: value }))}
+              placeholder="Select a zone…"
+              options={ZONE_OPTIONS.map((z) => ({ value: z, label: z }))}
+            />
           </div>
           <div className="form-field">
             <label className="form-label" htmlFor="pf-shift">Shift</label>
@@ -152,13 +154,12 @@ export function PersonnelFormModal({
 
         <div className="form-field">
           <label className="form-label" htmlFor="pf-status">Availability / Status</label>
-          <select id="pf-status" className="form-select" value={draft.status} onChange={set("status")}>
-            {STATUS_OPTIONS.map((s) => (
-              <option key={s} value={s}>
-                {s.replace("-", " ")}
-              </option>
-            ))}
-          </select>
+          <Select
+            id="pf-status"
+            value={draft.status}
+            onChange={(value) => setDraft((prev) => ({ ...prev, status: value as PersonnelStatus }))}
+            options={STATUS_OPTIONS.map((s) => ({ value: s, label: s.replace("-", " ") }))}
+          />
         </div>
       </form>
     </Modal>

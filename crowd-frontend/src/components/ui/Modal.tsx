@@ -1,5 +1,7 @@
-import { useEffect, type ReactNode } from "react";
+import { useEffect, useRef, type ReactNode } from "react";
 import { X } from "lucide-react";
+
+const FOCUSABLE = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
 
 export function Modal({
   open,
@@ -14,6 +16,9 @@ export function Modal({
   children: ReactNode;
   footer?: ReactNode;
 }) {
+  const bodyRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<Element | null>(null);
+
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => {
@@ -22,6 +27,19 @@ export function Modal({
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
   }, [open, onClose]);
+
+  useEffect(() => {
+    if (!open) return;
+    // Remembers what had focus before the modal opened so it can be
+    // restored on close, and moves focus into the modal itself — a dialog
+    // that opens without moving focus is a real accessibility gap.
+    triggerRef.current = document.activeElement;
+    const firstField = bodyRef.current?.querySelector<HTMLElement>(FOCUSABLE);
+    firstField?.focus();
+    return () => {
+      if (triggerRef.current instanceof HTMLElement) triggerRef.current.focus();
+    };
+  }, [open]);
 
   if (!open) return null;
 
@@ -34,7 +52,9 @@ export function Modal({
             <X size={18} />
           </button>
         </div>
-        <div className="ui-modal-body">{children}</div>
+        <div className="ui-modal-body" ref={bodyRef}>
+          {children}
+        </div>
         {footer && <div className="ui-modal-foot">{footer}</div>}
       </div>
     </div>

@@ -5,9 +5,11 @@
     </div>
   );
 }*/
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../state/SessionContext";
+import { useMonitoring } from "../state/MonitoringContext";
+import { Select } from "../components/ui/Select";
 import writeXlsxFile from "write-excel-file/browser";
 import {
   Bell,
@@ -49,30 +51,18 @@ import {
   ResponsiveContainer,
   CartesianGrid,
 } from "recharts";
-import {
-  getAlerts,
-  getMetrics,
-  heatmapUrl as buildHeatmapUrl,
-  startMonitoring,
-  stopMonitoring,
-  videoFeedUrl,
-} from "../api/vision";
 import { ApiError } from "../api/client";
-import type { AlertItem, AlertSeverity, ChartPoint, PredictionInfo, ZoneMetric } from "../types/vision";
+import type {
+  AlertItem,
+  AlertSeverity,
+  CameraSource,
+  CameraTestResult,
+  ChartPoint,
+  PredictionInfo,
+  ZoneMetric,
+} from "../types/vision";
 
 type TabId = "overview" | "camera" | "analytics" | "alerts" | "settings";
-
-const EMPTY_ZONES: ZoneMetric[] = [
-  { id: "zone-a", name: "Zone A", count: null, capacity: null, status: null, message: null },
-  { id: "zone-b", name: "Zone B", count: null, capacity: null, status: null, message: null },
-  { id: "zone-c", name: "Zone C", count: null, capacity: null, status: null, message: null },
-  { id: "zone-d", name: "Zone D", count: null, capacity: null, status: null, message: null },
-  { id: "zone-e", name: "Zone E", count: null, capacity: null, status: null, message: null },
-  { id: "zone-f", name: "Zone F", count: null, capacity: null, status: null, message: null },
-  { id: "zone-g", name: "Zone G", count: null, capacity: null, status: null, message: null },
-  { id: "zone-h", name: "Zone H", count: null, capacity: null, status: null, message: null },
-  { id: "zone-i", name: "Zone I", count: null, capacity: null, status: null, message: null },
-];
 
 const navItems: { id: TabId; label: string; icon: typeof LayoutGrid }[] = [
   { id: "overview", label: "Overview", icon: LayoutGrid },
@@ -414,9 +404,53 @@ function HeatmapPanel({
   );
 }
 
+function videoPlaceholderText(running: boolean, cameraConnected: boolean) {
+  if (!running) return "System Stopped";
+  if (!cameraConnected) return "CAMERA OFFLINE — retrying connection...";
+  return "Waiting for backend stream...";
+}
+
+function cameraStatusWord(running: boolean, backendConnected: boolean, cameraConnected: boolean) {
+  if (!backendConnected) return "BACKEND UNREACHABLE";
+  if (!running) return "STOPPED";
+  if (!cameraConnected) return "OFFLINE";
+  return "LIVE";
+}
+
+function CameraTag({
+  running,
+  backendConnected,
+  cameraConnected,
+  sourceLabel,
+  suffix,
+}: {
+  running: boolean;
+  backendConnected: boolean;
+  cameraConnected: boolean;
+  sourceLabel: string | null;
+  suffix?: string;
+}) {
+  const live = running && backendConnected && cameraConnected;
+  return (
+    <div className="camera-tag">
+      <span className={`camera-dot ${live ? "live" : ""}`} />
+      <span className="camera-tag-source">
+        {sourceLabel ?? "Camera"}
+        {suffix ? ` — ${suffix}` : ""}
+      </span>
+      <span className="camera-tag-sep" />
+      <span className={`camera-tag-status ${live ? "live" : ""}`}>
+        {cameraStatusWord(running, backendConnected, cameraConnected)}
+      </span>
+    </div>
+  );
+}
+
 function OverviewView(props: {
   running: boolean;
   backendConnected: boolean;
+  cameraConnected: boolean;
+  sourceLabel: string | null;
   videoUrl: string | null;
   heatmapUrl: string | null;
   zones: ZoneMetric[];
@@ -429,6 +463,8 @@ function OverviewView(props: {
   const {
     running,
     backendConnected,
+    cameraConnected,
+    sourceLabel,
     videoUrl,
     heatmapUrl,
     zones,
@@ -443,17 +479,19 @@ function OverviewView(props: {
     <>
       <section className="hero-grid">
         <section className="panel video-panel">
-          <div className="camera-tag">
-            <span className={`camera-dot ${running && backendConnected ? "live" : ""}`} />
-            <span>CAMERA 1</span>
-          </div>
+          <CameraTag
+            running={running}
+            backendConnected={backendConnected}
+            cameraConnected={cameraConnected}
+            sourceLabel={sourceLabel}
+          />
 
-          {running && videoUrl ? (
+          {running && videoUrl && cameraConnected ? (
             <img src={videoUrl} alt="Live camera feed" className="video-feed" />
           ) : (
             <div className="video-placeholder">
               <span className="video-placeholder-dot" />
-              <p>{running ? "Waiting for backend stream..." : "System Stopped"}</p>
+              <p>{videoPlaceholderText(running, cameraConnected)}</p>
             </div>
           )}
         </section>
@@ -487,25 +525,30 @@ function OverviewView(props: {
 function CameraView(props: {
   running: boolean;
   backendConnected: boolean;
+  cameraConnected: boolean;
+  sourceLabel: string | null;
   videoUrl: string | null;
   heatmapUrl: string | null;
 }) {
-  const { running, backendConnected, videoUrl, heatmapUrl } = props;
+  const { running, backendConnected, cameraConnected, sourceLabel, videoUrl, heatmapUrl } = props;
 
   return (
     <section className="camera-layout">
       <section className="panel camera-large-panel">
-        <div className="camera-tag">
-          <span className={`camera-dot ${running && backendConnected ? "live" : ""}`} />
-          <span>CAMERA 1 — PRIMARY VIEW</span>
-        </div>
+        <CameraTag
+          running={running}
+          backendConnected={backendConnected}
+          cameraConnected={cameraConnected}
+          sourceLabel={sourceLabel}
+          suffix="Primary View"
+        />
 
-        {running && videoUrl ? (
+        {running && videoUrl && cameraConnected ? (
           <img src={videoUrl} alt="Expanded live camera feed" className="video-feed" />
         ) : (
           <div className="video-placeholder">
             <span className="video-placeholder-dot" />
-            <p>{running ? "Waiting for backend stream..." : "System Stopped"}</p>
+            <p>{videoPlaceholderText(running, cameraConnected)}</p>
           </div>
         )}
       </section>
@@ -578,16 +621,151 @@ function AlertsView({ alerts }: { alerts: AlertItem[] }) {
   return <AlertsPanel alerts={alerts} />;
 }
 
+function CameraSourceControl({
+  sources,
+  currentSource,
+  sourceLabel,
+  switchSource,
+  testCamera,
+}: {
+  sources: CameraSource[];
+  currentSource: string | null;
+  sourceLabel: string | null;
+  switchSource: (sourceKey: string) => Promise<{ success: boolean; message: string }>;
+  testCamera: (url?: string) => Promise<CameraTestResult>;
+}) {
+  const [selected, setSelected] = useState(currentSource ?? "");
+  const [switching, setSwitching] = useState(false);
+  const [switchMessage, setSwitchMessage] = useState<string | null>(null);
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<CameraTestResult | null>(null);
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs the picker to the backend's current source without fighting the user's own in-progress selection
+    setSelected((prev) => (prev ? prev : currentSource ?? ""));
+  }, [currentSource]);
+
+  const phoneSource = sources.find((s) => s.id === "phone");
+
+  const handleSwitch = async () => {
+    if (!selected) return;
+    setSwitching(true);
+    setSwitchMessage(null);
+    try {
+      const result = await switchSource(selected);
+      setSwitchMessage(result.message);
+    } catch (error) {
+      setSwitchMessage(error instanceof ApiError ? error.message : "Failed to switch source.");
+    } finally {
+      setSwitching(false);
+    }
+  };
+
+  const handleTest = async () => {
+    setTesting(true);
+    setTestResult(null);
+    try {
+      const result = await testCamera();
+      setTestResult(result);
+    } catch (error) {
+      setTestResult({
+        connected: false,
+        message: error instanceof ApiError ? error.message : "Test request failed.",
+      });
+    } finally {
+      setTesting(false);
+    }
+  };
+
+  return (
+    <article className="panel settings-card">
+      <h2 className="panel-heading">Camera Source</h2>
+      <div className="settings-row">
+        <span>Active Source</span>
+        <strong>{sourceLabel ?? "—"}</strong>
+      </div>
+      <div className="settings-row">
+        <span>Select Source</span>
+        <div style={{ width: 180 }}>
+          <Select
+            value={selected}
+            onChange={setSelected}
+            placeholder="Choose…"
+            options={sources.map((option) => ({ value: option.id, label: option.label }))}
+          />
+        </div>
+      </div>
+      {phoneSource && selected === "phone" && (
+        <div className="settings-row">
+          <span>Phone Camera URL</span>
+          <strong>{phoneSource.name}</strong>
+        </div>
+      )}
+
+      <div className="action-group" style={{ marginTop: 10 }}>
+        <button
+          type="button"
+          className="action-button secondary"
+          onClick={handleSwitch}
+          disabled={switching || !selected}
+        >
+          <span>{switching ? "Switching…" : "Switch"}</span>
+        </button>
+        {selected === "phone" && (
+          <button type="button" className="action-button secondary" onClick={handleTest} disabled={testing}>
+            <span>{testing ? "Testing…" : "Test Connection"}</span>
+          </button>
+        )}
+      </div>
+
+      {switchMessage && (
+        <p style={{ fontSize: 11, color: "var(--muted-2)", marginTop: 8 }}>{switchMessage}</p>
+      )}
+      {testResult && (
+        <p
+          style={{
+            fontSize: 11,
+            marginTop: 8,
+            color: testResult.connected ? "#4ade80" : "#f87171",
+          }}
+        >
+          {testResult.connected ? "Connected" : "Unable to connect"} — {testResult.message}
+        </p>
+      )}
+    </article>
+  );
+}
+
 function SettingsView(props: {
   backendConnected: boolean;
+  cameraConnected: boolean;
   running: boolean;
   totalCount: number;
   density: number;
   overallStatus: string;
   operatorLabel: string;
   locationLabel: string;
+  sources: CameraSource[];
+  currentSource: string | null;
+  sourceLabel: string | null;
+  switchSource: (sourceKey: string) => Promise<{ success: boolean; message: string }>;
+  testCamera: (url?: string) => Promise<CameraTestResult>;
 }) {
-  const { backendConnected, running, totalCount, density, overallStatus, operatorLabel, locationLabel } = props;
+  const {
+    backendConnected,
+    cameraConnected,
+    running,
+    totalCount,
+    density,
+    overallStatus,
+    operatorLabel,
+    locationLabel,
+    sources,
+    currentSource,
+    sourceLabel,
+    switchSource,
+    testCamera,
+  } = props;
 
   return (
     <section className="settings-grid">
@@ -620,6 +798,12 @@ function SettingsView(props: {
           <strong>{running ? "Running" : "Stopped"}</strong>
         </div>
         <div className="settings-row">
+          <span>Camera</span>
+          <strong className={cameraConnected ? "stat-green" : "stat-red"}>
+            {cameraConnected ? "Connected" : "Offline"}
+          </strong>
+        </div>
+        <div className="settings-row">
           <span>Overall Status</span>
           <strong>{overallStatus}</strong>
         </div>
@@ -640,6 +824,14 @@ function SettingsView(props: {
           <strong>{overallStatus === "HIGH" ? "Escalated" : "Monitoring"}</strong>
         </div>
       </article>
+
+      <CameraSourceControl
+        sources={sources}
+        currentSource={currentSource}
+        sourceLabel={sourceLabel}
+        switchSource={switchSource}
+        testCamera={testCamera}
+      />
     </section>
   );
 }
@@ -647,24 +839,33 @@ function SettingsView(props: {
 export default function Dashboard(){
   const navigate = useNavigate();
   const { currentUser, hasPermission, signOut } = useSession();
-  const [running, setRunning] = useState(false);
-  const [zones, setZones] = useState<ZoneMetric[]>(EMPTY_ZONES);
-  const [alerts, setAlerts] = useState<AlertItem[]>([]);
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
-  const [heatmapUrl, setHeatmapUrl] = useState<string | null>(null);
-  const [totalCount, setTotalCount] = useState<number>(0);
-  const [density, setDensity] = useState<number>(0);
-  const [overallStatus, setOverallStatus] = useState<string>("SAFE");
-  const [backendConnected, setBackendConnected] = useState(false);
+  const {
+    running,
+    backendConnected,
+    cameraConnected,
+    source,
+    sourceLabel,
+    sources,
+    zones,
+    alerts,
+    totalCount,
+    density,
+    overallStatus,
+    prediction,
+    videoUrl,
+    heatmapUrl,
+    chartData,
+    monitoringPending,
+    startMonitoring,
+    stopMonitoring,
+    switchSource,
+    testCamera,
+  } = useMonitoring();
   const [activeTab, setActiveTab] = useState<TabId>("overview");
-  const [chartData, setChartData] = useState<ChartPoint[]>([]);
   const [selectedZoneId, setSelectedZoneId] = useState<string | null>(null);
   const [locationLabel, setLocationLabel] = useState("Locating...");
   const [operatorLabel] = useState("Security Command");
   const [profileOpen, setProfileOpen] = useState(false);
-  const [prediction, setPrediction] = useState<PredictionInfo | null>(null);
-  const [monitoringPending, setMonitoringPending] = useState(false);
-  const videoInitializedRef = useRef(false);
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -690,85 +891,20 @@ export default function Dashboard(){
     );
   }, []);
 
+  // Selection follows the live zone list; cleared when monitoring stops,
+  // otherwise keeps the current pick valid as the polled list changes underneath it.
+  // Keeps selection valid as the polled zone list changes underneath it; cleared when monitoring stops.
   useEffect(() => {
     if (!running) {
-      // Resets every readout to its idle default when monitoring is stopped.
       // eslint-disable-next-line react-hooks/set-state-in-effect
-      setZones(EMPTY_ZONES);
-      setAlerts([]);
-      setVideoUrl(null);
-      setHeatmapUrl(null);
-      setBackendConnected(false);
-      setTotalCount(0);
-      setDensity(0);
-      setOverallStatus("SAFE");
-      setChartData([]);
       setSelectedZoneId(null);
-      setPrediction(null);
-      videoInitializedRef.current = false;
       return;
     }
-
-    let mounted = true;
-
-    const fetchAll = async () => {
-      try {
-        const [metricsData, alertsData] = await Promise.all([getMetrics(), getAlerts()]);
-
-        if (!mounted) return;
-
-        const nextCount = metricsData.totalCount ?? 0;
-        const nextDensity = metricsData.density ?? 0;
-        const timeLabel = new Date().toLocaleTimeString([], {
-          hour: "2-digit",
-          minute: "2-digit",
-          second: "2-digit",
-        });
-
-        const nextZones = metricsData.zones?.length ? metricsData.zones : EMPTY_ZONES;
-        const nextAlerts = Array.isArray(alertsData)
-          ? alertsData.filter((a) => a?.id).slice(0, 20)
-          : [];
-
-        setBackendConnected(true);
-        setZones(nextZones);
-        setAlerts((prev) => [...nextAlerts, ...prev].slice(0, 30));
-        setTotalCount(nextCount);
-        setDensity(nextDensity);
-        setOverallStatus(metricsData.overallStatus ?? "SAFE");
-        setPrediction(metricsData.prediction ?? null);
-
-        if (!videoInitializedRef.current) {
-          setVideoUrl(videoFeedUrl());
-          videoInitializedRef.current = true;
-        }
-
-        setHeatmapUrl(buildHeatmapUrl());
-
-        setSelectedZoneId((prev) => {
-          if (!prev) return nextZones[0]?.id ?? null;
-          return nextZones.some((zone) => zone.id === prev) ? prev : nextZones[0]?.id ?? null;
-        });
-
-        setChartData((prev) => {
-          const updated = [...prev, { time: timeLabel, count: nextCount, density: nextDensity }];
-          return updated.slice(-20);
-        });
-      } catch (error) {
-        console.error("Polling failed:", error);
-        if (!mounted) return;
-        setBackendConnected(false);
-      }
-    };
-
-    fetchAll();
-    const interval = window.setInterval(fetchAll, 1000);
-
-    return () => {
-      mounted = false;
-      window.clearInterval(interval);
-    };
-  }, [running]);
+    setSelectedZoneId((prev) => {
+      if (!prev) return zones[0]?.id ?? null;
+      return zones.some((zone) => zone.id === prev) ? prev : zones[0]?.id ?? null;
+    });
+  }, [running, zones]);
 
   const selectedZone = useMemo(
     () => zones.find((zone) => zone.id === selectedZoneId) ?? null,
@@ -778,19 +914,14 @@ export default function Dashboard(){
   const monitoringLabel = running ? "Stop Monitoring" : "Start Monitoring";
 
   const handleToggleMonitoring = async () => {
-    setMonitoringPending(true);
     try {
       if (running) {
         await stopMonitoring();
-        setRunning(false);
       } else {
         await startMonitoring();
-        setRunning(true);
       }
     } catch (error) {
       console.error("Could not toggle monitoring:", error instanceof ApiError ? error.message : error);
-    } finally {
-      setMonitoringPending(false);
     }
   };
   const notificationCount = alerts.filter(
@@ -894,6 +1025,8 @@ export default function Dashboard(){
         <CameraView
           running={running}
           backendConnected={backendConnected}
+          cameraConnected={cameraConnected}
+          sourceLabel={sourceLabel}
           videoUrl={videoUrl}
           heatmapUrl={heatmapUrl}
         />
@@ -922,12 +1055,18 @@ export default function Dashboard(){
       return (
         <SettingsView
           backendConnected={backendConnected}
+          cameraConnected={cameraConnected}
           running={running}
           totalCount={totalCount}
           density={density}
           overallStatus={overallStatus}
           operatorLabel={operatorLabel}
           locationLabel={locationLabel}
+          sources={sources}
+          currentSource={source}
+          sourceLabel={sourceLabel}
+          switchSource={switchSource}
+          testCamera={testCamera}
         />
       );
     }
@@ -936,6 +1075,8 @@ export default function Dashboard(){
       <OverviewView
         running={running}
         backendConnected={backendConnected}
+        cameraConnected={cameraConnected}
+        sourceLabel={sourceLabel}
         videoUrl={videoUrl}
         heatmapUrl={heatmapUrl}
         zones={zones}
@@ -974,8 +1115,8 @@ export default function Dashboard(){
           </div>
 
           <div className="topbar-chip live-indicator">
-            <span className={`live-dot ${running && backendConnected ? "on" : ""}`} />
-            <span>{running && backendConnected ? "LIVE" : "OFFLINE"}</span>
+            <span className={`live-dot ${running && backendConnected && cameraConnected ? "on" : ""}`} />
+            <span>{running && backendConnected && cameraConnected ? "LIVE" : "OFFLINE"}</span>
           </div>
 
           <button className="icon-button notif-button" type="button" aria-label="Incident notifications">
