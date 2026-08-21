@@ -426,6 +426,44 @@ input[type="radio"] {
   color: #ff8b95;
 }
 
+.notif-menu {
+  width: 320px;
+}
+
+.notif-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 260px;
+  overflow: auto;
+  margin-bottom: 6px;
+}
+
+.notif-item {
+  min-height: auto;
+  padding: 8px 10px;
+  align-items: flex-start;
+  color: #fb923c;
+}
+
+.notif-item-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.notif-item-title {
+  font-size: 12.5px;
+  font-weight: 700;
+  color: #eef5ff;
+}
+
+.notif-item-meta {
+  font-size: 11px;
+  color: var(--muted-2);
+}
+
 .body-shell {
   display: grid;
   grid-template-columns: 276px minmax(0, 1fr);

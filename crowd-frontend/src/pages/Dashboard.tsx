@@ -9,6 +9,8 @@ import { useEffect, useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useSession } from "../state/SessionContext";
 import { useMonitoring } from "../state/MonitoringContext";
+import { useApiResource } from "../hooks/useApiResource";
+import { listIncidents } from "../api/incidents";
 import { Select } from "../components/ui/Select";
 import writeXlsxFile from "write-excel-file/browser";
 import {
@@ -866,6 +868,16 @@ export default function Dashboard(){
   const [locationLabel, setLocationLabel] = useState("Locating...");
   const [operatorLabel] = useState("Security Command");
   const [profileOpen, setProfileOpen] = useState(false);
+  const [notifOpen, setNotifOpen] = useState(false);
+  // Notification bell mirrors IncidentLog's "Active" stat (unresolved,
+  // high/critical-severity incidents) — polled independently of the
+  // monitoring pipeline so it still reflects real backend state when
+  // monitoring is stopped.
+  const { data: activeIncidents } = useApiResource(
+    () => listIncidents({ status: "active" }),
+    [],
+    { pollMs: 5000 }
+  );
 
   useEffect(() => {
     if (!navigator.geolocation) {
@@ -924,9 +936,7 @@ export default function Dashboard(){
       console.error("Could not toggle monitoring:", error instanceof ApiError ? error.message : error);
     }
   };
-  const notificationCount = alerts.filter(
-    (alert) => alert.severity === "HIGH" || alert.severity === "MODERATE"
-  ).length;
+  const notificationCount = activeIncidents?.length ?? 0;
 
   const exportCSV = () => {
     const rows = [
@@ -1119,12 +1129,78 @@ export default function Dashboard(){
             <span>{running && backendConnected && cameraConnected ? "LIVE" : "OFFLINE"}</span>
           </div>
 
-          <button className="icon-button notif-button" type="button" aria-label="Incident notifications">
-            <Bell size={19} strokeWidth={1.8} />
-            {notificationCount > 0 ? (
-              <span className="notif-badge">{Math.min(notificationCount, 9)}+</span>
-            ) : null}
-          </button>
+          <div className="profile-wrap">
+            <button
+              className="icon-button notif-button"
+              type="button"
+              aria-label="Incident notifications"
+              aria-expanded={notifOpen}
+              onClick={() => setNotifOpen((prev) => !prev)}
+            >
+              <Bell size={19} strokeWidth={1.8} />
+              {notificationCount > 0 ? (
+                <span className="notif-badge">
+                  {notificationCount > 9 ? "9+" : notificationCount}
+                </span>
+              ) : null}
+            </button>
+
+            {notifOpen && (
+              <div className="profile-menu notif-menu">
+                <div className="profile-menu-head">
+                  <div className="profile-menu-title">Active Incidents</div>
+                  <div className="profile-menu-sub">
+                    {notificationCount === 0
+                      ? "No unresolved high-severity incidents"
+                      : `${notificationCount} unresolved, needs attention`}
+                  </div>
+                </div>
+
+                {notificationCount === 0 ? (
+                  <p style={{ fontSize: 12, color: "var(--muted-2)", padding: "4px 10px 10px" }}>
+                    You're all caught up.
+                  </p>
+                ) : (
+                  <div className="notif-list">
+                    {(activeIncidents ?? []).map((incident) => (
+                      <button
+                        key={incident.id}
+                        type="button"
+                        className="profile-menu-item notif-item"
+                        onClick={() => {
+                          setNotifOpen(false);
+                          navigate("/incident-log");
+                        }}
+                      >
+                        <Siren size={16} />
+                        <span className="notif-item-body">
+                          <span className="notif-item-title">
+                            Zone {incident.zone || "—"} — {incident.alertType}
+                          </span>
+                          <span className="notif-item-meta">
+                            {incident.severity.toUpperCase()} •{" "}
+                            {new Date(incident.updatedAt).toLocaleTimeString()}
+                          </span>
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                )}
+
+                <button
+                  type="button"
+                  className="profile-menu-item"
+                  onClick={() => {
+                    setNotifOpen(false);
+                    navigate("/incident-log");
+                  }}
+                >
+                  <ClipboardList size={16} />
+                  <span>View Incident Log</span>
+                </button>
+              </div>
+            )}
+          </div>
 
           <div className="profile-wrap">
             <button
