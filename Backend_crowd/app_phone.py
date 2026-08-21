@@ -12,7 +12,7 @@ load_dotenv()  # picks up Backend_crowd/.env, same as config.py
 
 if not os.environ.get("CAMERA_URL", "").strip():
     raise SystemExit(
-        "CAMERA_URL is not set. Add CAMERA_URL=http://<phone-ip>:8080/video "
+        "CAMERA_URL is not set. Add CAMERA_URL= http://172.16.211.1:8080/video"
         "to Backend_crowd/.env before running app_phone.py."
     )
 os.environ["SOURCE_TYPE"] = "phone"  # dotenv won't override this later

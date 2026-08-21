@@ -1,8 +1,15 @@
 export type RoleKey = "admin" | "security_officer" | "authority";
 
+// "development": frontend-only sign-in, no backend/Firebase involved — see SignIn.tsx.
+// A future "firebase" mode can be added here once real auth lands, without
+// changing how the rest of the app reads currentUser.
+export type AuthMode = "development" | "firebase";
+
 export interface CurrentUser {
   name: string;
+  email: string;
   roleKey: RoleKey;
+  authMode: AuthMode;
 }
 
 const STORAGE_KEY = "crowd-system:session";

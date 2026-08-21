@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
-import { Shield, Activity, Radio, ShieldCheck, Check, WifiOff, RotateCw } from "lucide-react";
+import { Shield, Activity, Radio, ShieldCheck, Check } from "lucide-react";
 import { useSession } from "../state/SessionContext";
 import type { RoleKey } from "../state/session";
 
@@ -10,22 +10,38 @@ const FEATURES = [
   { icon: ShieldCheck, label: "Role-based access across every operations screen" },
 ];
 
+// Hardcoded to match Backend_crowd/db.py ROLES — kept local (not fetched)
+// so sign-in never depends on the backend being reachable.
+const ROLE_OPTIONS: { key: RoleKey; label: string }[] = [
+  { key: "admin", label: "Admin" },
+  { key: "security_officer", label: "Security Officer" },
+  { key: "authority", label: "Authority" },
+];
+
+const EMAIL_PATTERN = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 export default function SignIn() {
-  const { roles, loadingRoles, rolesUnavailable, retryRoles, signIn } = useSession();
+  const { signIn } = useSession();
   const navigate = useNavigate();
   const location = useLocation();
 
   const [name, setName] = useState("");
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
   const [roleKey, setRoleKey] = useState<RoleKey | "">("");
   const [submitting, setSubmitting] = useState(false);
 
   const from = (location.state as { from?: { pathname: string } } | null)?.from?.pathname ?? "/";
 
+  const canSubmit = name.trim().length > 0 && EMAIL_PATTERN.test(email.trim()) && password.length > 0 && !!roleKey;
+
   const handleSubmit = (event: FormEvent) => {
     event.preventDefault();
-    if (!name.trim() || !roleKey) return;
+    if (!canSubmit) return;
     setSubmitting(true);
-    signIn({ name: name.trim(), roleKey: roleKey as RoleKey });
+    // Development-only sign-in: nothing here is sent to a backend and the
+    // password is never stored, even locally — see state/session.ts.
+    signIn({ name: name.trim(), email: email.trim(), roleKey: roleKey as RoleKey, authMode: "development" });
     navigate(from, { replace: true });
   };
 
@@ -80,12 +96,12 @@ export default function SignIn() {
           <div className="signin-card-head">
             <div className="signin-card-title">Sign in to continue</div>
             <p className="signin-card-sub">
-              Identify yourself for permissions and dispatch attribution. Password-based authentication
-              is a planned follow-up — this is not a secure login.
+              Identify yourself for permissions and dispatch attribution. This is not a secure login —
+              real authentication is a planned follow-up.
             </p>
             <div className="signin-status">
-              <span className={`signin-status-dot ${loadingRoles ? "" : rolesUnavailable ? "offline" : "online"}`} />
-              {loadingRoles ? "Connecting…" : rolesUnavailable ? "Backend unavailable" : "System connected"}
+              <span className="signin-status-dot online" />
+              Development sign-in — credentials aren't verified
             </div>
           </div>
 
@@ -106,52 +122,59 @@ export default function SignIn() {
             </div>
 
             <div className="form-field">
-              <span className="form-label">Sign in as</span>
-
-              {loadingRoles ? (
-                <div className="signin-role-skeleton" aria-hidden="true">
-                  <div className="signin-skeleton-row" />
-                  <div className="signin-skeleton-row" />
-                  <div className="signin-skeleton-row" />
-                </div>
-              ) : rolesUnavailable ? (
-                <div className="signin-backend-unavailable">
-                  <div className="signin-backend-unavailable-title">
-                    <WifiOff size={15} />
-                    Backend unavailable
-                  </div>
-                  <p>Check that the Crowd System backend is running.</p>
-                  <button type="button" className="btn btn-secondary btn-sm" onClick={retryRoles}>
-                    <RotateCw size={13} /> Retry
-                  </button>
-                </div>
-              ) : (
-                <div className="signin-role-list" role="radiogroup" aria-label="Sign in as">
-                  {roles.map((role) => (
-                    <label
-                      key={role.key}
-                      className={`signin-role-option ${roleKey === role.key ? "selected" : ""}`}
-                    >
-                      <input
-                        type="radio"
-                        name="role"
-                        value={role.key}
-                        checked={roleKey === role.key}
-                        onChange={() => setRoleKey(role.key as RoleKey)}
-                      />
-                      <span>{role.label}</span>
-                      {roleKey === role.key && <Check size={15} />}
-                    </label>
-                  ))}
-                </div>
-              )}
+              <label className="form-label" htmlFor="signin-email">
+                Email
+              </label>
+              <input
+                id="signin-email"
+                type="email"
+                className="form-input"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="e.g. arjun@example.com"
+                autoComplete="email"
+              />
             </div>
 
-            <button
-              type="submit"
-              className="btn btn-primary signin-submit"
-              disabled={!name.trim() || !roleKey || loadingRoles || rolesUnavailable || submitting}
-            >
+            <div className="form-field">
+              <label className="form-label" htmlFor="signin-password">
+                Password
+              </label>
+              <input
+                id="signin-password"
+                type="password"
+                className="form-input"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Any password"
+                autoComplete="current-password"
+              />
+            </div>
+
+            <div className="form-field">
+              <span className="form-label">Sign in as</span>
+
+              <div className="signin-role-list" role="radiogroup" aria-label="Sign in as">
+                {ROLE_OPTIONS.map((role) => (
+                  <label
+                    key={role.key}
+                    className={`signin-role-option ${roleKey === role.key ? "selected" : ""}`}
+                  >
+                    <input
+                      type="radio"
+                      name="role"
+                      value={role.key}
+                      checked={roleKey === role.key}
+                      onChange={() => setRoleKey(role.key)}
+                    />
+                    <span>{role.label}</span>
+                    {roleKey === role.key && <Check size={15} />}
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            <button type="submit" className="btn btn-primary signin-submit" disabled={!canSubmit || submitting}>
               {submitting ? "Signing in…" : "Continue"}
             </button>
           </form>
